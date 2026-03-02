@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Update your model status field if it isn't already
+model EquipmentTicket {
+  id               Int      @id @default(autoincrement())
+  hubspotTicketId  String   @unique
+  equipmentIssue   String
+  status           String   @default("Open") // Ensure this exists
+  occurredAt       DateTime
+  createdAt        DateTime @default(now())
+}
