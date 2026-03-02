@@ -1,29 +1,15 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import prisma from '../../../lib/prisma';
+import { closeHubSpotTicket } from '../../../services/hubspot';
 
 export async function POST(request) {
   try {
     const { ticketId, hubspotId } = await request.json();
 
-    // 1. Tell HubSpot to close the ticket
-    const hubspotResponse = await fetch(`https://api.hubapi.com/crm/v3/objects/tickets/${hubspotId}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${process.env.HUBSPOT_ACCESS_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        properties: { hs_pipeline_stage: '4' } // Confirmed ID from your settings
-      }),
-    });
+    // 1. Delegate the external API call to our new Service Layer
+    await closeHubSpotTicket(hubspotId);
 
-    if (!hubspotResponse.ok) {
-      const errorData = await hubspotResponse.json();
-      console.error('HubSpot API Error:', errorData);
-      throw new Error(errorData.message || 'HubSpot update failed');
-    }
-
-    // 2. Soft Delete: Keep the data, but change the status
+    // 2. Perform the Soft Delete on our local database
     await prisma.equipmentTicket.update({
       where: { id: ticketId },
       data: { status: 'Resolved' }
