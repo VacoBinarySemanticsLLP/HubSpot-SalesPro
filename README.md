@@ -32,37 +32,46 @@ This internal dashboard displays equipment repair tickets pulled from HubSpot CR
 
 > If you don't have a HubSpot token, ask the project admin.
 
-### Step-by-Step Setup
+## Step-by-Step Setup
 
+## 1. Clone the repository
 ```bash
-# 1. Clone the repository
 git clone https://github.com/VacoBinarySemanticsLLP/HubSpot-SalesPro.git
+```
+```bash
 cd HubSpot-SalesPro
-
-# 2. Install dependencies
+```
+## 2. Install dependencies
+```bash
 npm install
-
-# 3. Create your environment file from the template
+```
+## 3. Create your environment file from the template
+```bash
 cp .env.example .env
+```
+## 4. Open .env and fill in your credentials
+```bash
+# DATABASE_URL is pre-configured for SQLite, no change needed.
 
-# 4. Open .env and fill in your credentials
-#    DATABASE_URL is pre-configured for SQLite, no change needed.
-#    Replace the placeholder with your actual HubSpot token:
-#    HUBSPOT_ACCESS_TOKEN="pat-na2-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-# 5. Set up your local database (creates a dev.db file)
+# Replace the placeholder with your actual HubSpot token:
+HUBSPOT_ACCESS_TOKEN="pat-na2-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+```
+## 5. Set up your local database (creates a dev.db file)
+```bash
 npx prisma db push
-
-# 6. Generate the Prisma client
+```
+## 6. Generate the Prisma client
+```bash
 npx prisma generate
-
-# 7. Start the development server
+```
+## 7. Start the development server
+```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser. You should see the Repair Operations dashboard.
 
-### Common Issues
+## Common Issues
 
 | Problem | Solution |
 |---------|----------|
