@@ -1,42 +1,63 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import crypto from 'crypto';
+import prisma from '../../../lib/prisma'; // Using your new optimized singleton!
 
 export async function POST(request) {
   try {
-    // 1. Catch the JSON payload thrown by HubSpot
-    const payload = await request.json();
+    // 1. Read the raw body as text for precise cryptographic hashing
+    const rawBody = await request.text();
+    const signatureHeader = request.headers.get('x-hubspot-signature');
+    const webhookSecret = process.env.HUBSPOT_WEBHOOK_SECRET;
 
-    // HubSpot sends an array of events, so we grab the first one
+    // 2. Security Check 1: Ensure our server has the secret configured
+    if (!webhookSecret) {
+      console.error("🛑 Server configuration error: Missing Webhook Secret");
+      return NextResponse.json({ error: "Server Configuration Error" }, { status: 500 });
+    }
+
+    // 3. Security Check 2: Ensure the request actually has a signature
+    if (!signatureHeader) {
+      console.error("🛑 Security Breach: Missing Signature Header");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // 4. Mathematical Verification (HMAC SHA-256)
+    const hash = crypto
+      .createHash('sha256')
+      .update(webhookSecret + rawBody)
+      .digest('hex');
+
+    if (hash !== signatureHeader) {
+      console.error("🛑 Security Breach: Invalid Signature Detected");
+      return NextResponse.json({ error: "Unauthorized signature" }, { status: 401 });
+    }
+
+    // 5. If the math matches, we parse the securely verified data
+    const payload = JSON.parse(rawBody);
     const event = payload[0]; 
 
-    // 2. Validate that we actually got data
     if (!event || !event.objectId || !event.propertyValue) {
       return NextResponse.json({ error: "Missing data" }, { status: 400 });
     }
 
-    // 3. Save or update the data in our SQLite database using Prisma
+    // 6. Save or update the data in our SQLite database
     const newTicket = await prisma.equipmentTicket.upsert({
       where: {
         hubspotTicketId: event.objectId.toString(),
       },
       update: {
-        // If the ticket exists, just update the issue and the timestamp
         equipmentIssue: event.propertyValue,
         occurredAt: new Date(event.occurredAt),
+        status: 'Open', // Wakes the ticket back up if it was previously resolved
       },
       create: {
-        // If it's a brand new ticket, create the whole row
         hubspotTicketId: event.objectId.toString(),
         equipmentIssue: event.propertyValue,
         occurredAt: new Date(event.occurredAt),
       },
     });
 
-    console.log("✅ Successfully saved ticket:", newTicket);
-
-    // 4. Return a 200 OK so HubSpot knows we caught it
+    console.log("✅ Securely verified & saved ticket:", newTicket.hubspotTicketId);
     return NextResponse.json({ success: true, ticket: newTicket }, { status: 200 });
 
   } catch (error) {
