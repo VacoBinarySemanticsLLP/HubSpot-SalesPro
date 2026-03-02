@@ -13,6 +13,12 @@ class TicketRecord(Base):
     ticket_id = Column(BigInteger, unique=True)
     subject = Column(String)
     
+    # Restaurant Domain Properties
+    merchant_id = Column(String)
+    restaurant_tier = Column(String)
+    investigation_reason = Column(String)
+    sales_investigation_required = Column(String)
+    
     # Owner Info
     owner_name = Column(String)
     owner_email = Column(String)
@@ -27,5 +33,4 @@ class TicketRecord(Base):
     
     raw_payload = Column(JSON) 
 
-# Create the tables in the database
 Base.metadata.create_all(bind=engine)

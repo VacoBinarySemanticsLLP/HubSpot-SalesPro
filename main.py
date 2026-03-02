@@ -21,55 +21,58 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
     webhook_item = data[0]
     ticket_id = webhook_item.get("objectId")
     
-    # 1. Fetch Ticket & Association IDs
+    # 1. Fetch Ticket Data
     ticket_data = hubspot_client.get_ticket_details(ticket_id)
     props = ticket_data.get("properties", {})
-    associations = ticket_data.get("associations", {})
+    
+    # 2. Logic Filter: Trigger only if investigation is Required
+    is_required = props.get("sales_investigation_required")
+    if is_required != "Yes":
+        print(f"Skipping Ticket {ticket_id}: Investigation Required is '{is_required}'")
+        return {"status": "ignored"}
 
-    # 2. Extract IDs safely
+    print(f"Processing Investigation for Merchant ID: {props.get('merchant_id')}")
+
+    # 3. Extract IDs and fetch enrichment data
+    associations = ticket_data.get("associations", {})
     owner_id = props.get("hubspot_owner_id")
     
-    # Get the first associated company ID
     company_list = associations.get("companies", {}).get("results", [])
     company_id = company_list[0].get("id") if company_list else None
     
-    # Get the first associated contact ID
     contact_list = associations.get("contacts", {}).get("results", [])
     contact_id = contact_list[0].get("id") if contact_list else None
 
-    # 3. Fetch Data for all entities
     owner_data = hubspot_client.get_owner_details(owner_id)
     company_data = hubspot_client.get_company_details(company_id)
     contact_data = hubspot_client.get_contact_details(contact_id)
 
-    # 4. Upsert into Database
-    existing_record = db.query(TicketRecord).filter(TicketRecord.ticket_id == ticket_id).first()
-    
-    # Helper to build the name strings
-    f_name = owner_data.get('firstName', '')
-    l_name = owner_data.get('lastName', '')
-    c_fname = contact_data.get('firstname', '')
-    c_lname = contact_data.get('lastname', '')
-
+    # 4. Prepare data and Upsert
     update_data = {
         "subject": props.get("subject"),
-        "owner_name": f"{f_name} {l_name}".strip(),
+        "merchant_id": props.get("merchant_id"),
+        "restaurant_tier": props.get("restaurant_tier"),
+        "investigation_reason": props.get("investigation_reason"),
+        "sales_investigation_required": is_required,
+        "owner_name": f"{owner_data.get('firstName', '')} {owner_data.get('lastName', '')}".strip(),
         "owner_email": owner_data.get('email'),
         "company_name": company_data.get('name'),
         "company_city": company_data.get('city'),
-        "contact_name": f"{c_fname} {c_lname}".strip(),
+        "contact_name": f"{contact_data.get('firstname', '')} {contact_data.get('lastname', '')}".strip(),
         "contact_phone": contact_data.get('phone'),
         "raw_payload": data
     }
 
+    existing_record = db.query(TicketRecord).filter(TicketRecord.ticket_id == ticket_id).first()
+    
     if existing_record:
         for key, value in update_data.items():
             setattr(existing_record, key, value)
-        print(f"✅ Updated Ticket {ticket_id} with Company: {update_data['company_name']}")
+        print(f"Updated Restaurant Case: {ticket_id}")
     else:
         new_record = TicketRecord(ticket_id=ticket_id, **update_data)
         db.add(new_record)
-        print(f"💾 Saved New Ticket {ticket_id}")
+        print(f"Saved New Restaurant Case: {ticket_id}")
 
     db.commit()
     return {"status": "success"}
