@@ -81,7 +81,10 @@ hubspot-poc/
       globals.css     # Global CSS reset
 
   README.md           # This file
-  venv/               # Python virtualenv (local only)
+  venv/               # Python virtualenv (local only, ignored by git)
+  docker-compose.yml  # Docker orchestration for backend + frontend
+  backend/Dockerfile  # Backend container image
+  frontend/Dockerfile # Frontend container image
 ```
 
 ---
@@ -229,6 +232,35 @@ This starts Next.js dev server on `http://localhost:3000`.
 
 > The frontend assumes the backend is available at `http://127.0.0.1:8000`.
 
+If you prefer **Docker**, see the next section.
+
+---
+
+## 6b. Running everything with Docker
+
+You can run both backend and frontend with a single command using `docker-compose`:
+
+```bash
+cd hubspot-poc
+
+# first build images
+docker compose build
+
+# then start the stack
+docker compose up
+```
+
+This will:
+
+- Start the **backend** container on `http://localhost:8000`.
+- Start the **frontend** container on `http://localhost:3000`.
+
+Make sure your HubSpot app `REDIRECT_URI` is set to:
+
+- `http://localhost:8000/oauth-callback`
+
+The OAuth install flow and `/sync-tickets` usage are identical – you just hit the same URLs on `localhost` while the containers are running.
+
 ### What the dashboard does
 
 - **GET** `http://127.0.0.1:8000/investigations` to show:
@@ -271,6 +303,18 @@ Refresh the page or click the **Refresh** button in the UI to confirm changes.
 
 - **Frontend (local)**:
   - `http://localhost:3000/` – Sales Investigation Dashboard UI.
+
+---
+
+## 8. Screenshots
+
+### Raw JSON response from `/investigations`
+
+![Investigations JSON response](JsonResponse.png)
+
+### Frontend dashboard UI
+
+![Sales Investigation Dashboard UI](UI.png)
 
 With these steps and URLs, someone new to the repo can:
 

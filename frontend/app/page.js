@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState("All");
+  const [showRaw, setShowRaw] = useState(false);
   const [drafts, setDrafts] = useState({});
 
   const loadInvestigations = async () => {
@@ -129,9 +130,15 @@ export default function DashboardPage() {
           <h2 style={{ margin: 0, fontSize: "1.25rem", color: "#0f172a" }}>
             Investigation queue
           </h2>
-          <p style={{ margin: "0.25rem 0 0", fontSize: "0.85rem", color: "#64748b" }}>
-            Tickets pulled from HubSpot where <code>sales_investigation_required</code> is{" "}
-            <strong>Yes</strong>.
+          <p
+            style={{
+              margin: "0.25rem 0 0",
+              fontSize: "0.85rem",
+              color: "#64748b",
+            }}
+          >
+            Tickets pulled from HubSpot where{" "}
+            <code>sales_investigation_required</code> is <strong>Yes</strong>.
           </p>
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -154,8 +161,56 @@ export default function DashboardPage() {
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setShowRaw((v) => !v)}
+            style={{
+              borderRadius: "999px",
+              padding: "0.25rem 0.75rem",
+              fontSize: "0.75rem",
+              border: "1px solid #cbd5e1",
+              backgroundColor: showRaw ? "#0f172a" : "#ffffff",
+              color: showRaw ? "#ffffff" : "#0f172a",
+              cursor: "pointer",
+            }}
+          >
+            {showRaw ? "Hide JSON" : "Show JSON"}
+          </button>
         </div>
       </section>
+
+      {showRaw && (
+        <section
+          style={{
+            backgroundColor: "#020617",
+            color: "#e5e7eb",
+            borderRadius: "0.75rem",
+            padding: "0.75rem 0.9rem",
+            fontSize: "0.75rem",
+            fontFamily:
+              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "0.35rem",
+            }}
+          >
+            <span style={{ opacity: 0.8 }}>
+              GET <code style={{ color: "#22c55e" }}>{API_BASE}/investigations</code>
+            </span>
+            <span style={{ opacity: 0.6 }}>
+              {items.length} record{items.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            {JSON.stringify(items, null, 2)}
+          </pre>
+        </section>
+      )}
 
       <section
         style={{
@@ -220,14 +275,26 @@ export default function DashboardPage() {
         )}
 
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+          <table
+            style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}
+          >
             <thead style={{ backgroundColor: "#f8fafc", color: "#64748b" }}>
               <tr>
-                <th style={{ textAlign: "left", padding: "0.6rem 0.75rem" }}>Merchant</th>
-                <th style={{ textAlign: "left", padding: "0.6rem 0.75rem" }}>Issue</th>
-                <th style={{ textAlign: "left", padding: "0.6rem 0.75rem" }}>Status</th>
-                <th style={{ textAlign: "left", padding: "0.6rem 0.75rem" }}>Comments</th>
-                <th style={{ textAlign: "right", padding: "0.6rem 0.75rem" }}>Sync</th>
+                <th style={{ textAlign: "left", padding: "0.6rem 0.75rem" }}>
+                  Merchant
+                </th>
+                <th style={{ textAlign: "left", padding: "0.6rem 0.75rem" }}>
+                  Issue
+                </th>
+                <th style={{ textAlign: "left", padding: "0.6rem 0.75rem" }}>
+                  Status
+                </th>
+                <th style={{ textAlign: "left", padding: "0.6rem 0.75rem" }}>
+                  Comments
+                </th>
+                <th style={{ textAlign: "right", padding: "0.6rem 0.75rem" }}>
+                  Sync
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -256,7 +323,13 @@ export default function DashboardPage() {
                       <div style={{ fontWeight: 600, color: "#0f172a" }}>
                         {inv.merchant_name || "Unknown Merchant"}
                       </div>
-                      <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.15rem" }}>
+                      <div
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "#9ca3af",
+                          marginTop: "0.15rem",
+                        }}
+                      >
                         Ticket #{inv.ticket_id}
                       </div>
                     </td>
@@ -337,125 +410,6 @@ export default function DashboardPage() {
           </table>
         </div>
       </section>
-    </div>
-  );
-}
-
-"use client";
-import { useEffect, useMemo, useState } from "react";
-
-const API_BASE = "http://localhost:8000";
-const STATUS_OPTIONS = ["Open", "In Progress", "Resolved"];
-
-function statusBadgeClasses(status) {
-  switch (status) {
-    case "Resolved":
-      return "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200";
-    case "In Progress":
-      return "bg-amber-100 text-amber-800 ring-1 ring-amber-200";
-    default:
-      return "bg-sky-100 text-sky-800 ring-1 ring-sky-200";
-  }
-}
-
-export default function SalesInvestigationDashboard() {
-  const [cases, setCases] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [activeFilter, setActiveFilter] = useState("All");
-  const [drafts, setDrafts] = useState({});
-
-  const loadInvestigations = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch(`${API_BASE}/investigations`);
-      if (!res.ok) throw new Error(`Backend returned ${res.status}`);
-      const data = await res.json();
-      setCases(data);
-      setDrafts((prev) => {
-        const next = { ...prev };
-        for (const inv of data) {
-          if (!next[inv.ticket_id]) {
-            next[inv.ticket_id] = {
-              status: inv.status || "Open",
-              comments: inv.comments || "",
-            };
-          }
-        }
-        return next;
-      });
-    } catch (e) {
-      setError(e.message || "Failed to load investigations");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadInvestigations();
-    const interval = setInterval(loadInvestigations, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const filteredCases = useMemo(
-    () =>
-      activeFilter === "All"
-        ? cases
-        : cases.filter((c) => c.status === activeFilter),
-    [cases, activeFilter]
-  );
-
-  const updateDraft = (ticketId, patch) => {
-    setDrafts((prev) => ({
-      ...prev,
-      [ticketId]: { ...(prev[ticketId] || {}), ...patch },
-    }));
-  };
-
-  const handleStatusSave = async (ticketId) => {
-    const draft = drafts[ticketId] || {};
-    const status = draft.status || "Open";
-    const comments = draft.comments || "";
-    try {
-      const res = await fetch(`${API_BASE}/investigations/${ticketId}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, comments }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok || body.status === "error") {
-        throw new Error(
-          body?.hubspot_error?.message ||
-            body?.detail ||
-            "Failed to update ticket in HubSpot"
-        );
-      }
-      await loadInvestigations();
-    } catch (e) {
-      alert(e.message || "Unable to update ticket. Check backend logs.");
-    }
-  };
-
-  return (
-    <div className="p-6">
-      {/* UI content omitted for brevity – this is enough for Next to detect a route */}
-      <h1 className="text-2xl font-semibold mb-4">
-        Sales Investigation Dashboard
-      </h1>
-      <p className="text-sm text-slate-600 mb-4">
-        If you see this, Next.js is running and talking to your backend.
-      </p>
-      <button
-        onClick={loadInvestigations}
-        className="rounded-md bg-slate-900 text-white text-sm px-3 py-1.5"
-      >
-        Load investigations
-      </button>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-      <pre className="mt-4 text-xs bg-slate-100 p-3 rounded">
-        {JSON.stringify(cases, null, 2)}
-      </pre>
     </div>
   );
 }

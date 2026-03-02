@@ -41,10 +41,47 @@ STATUS_TO_PIPELINE_STAGE = {
 
 STAGE_TO_STATUS = {v: k for k, v in STATUS_TO_PIPELINE_STAGE.items()}
 
+
 def get_db():
     db = SessionLocal()
     try: yield db
     finally: db.close()
+
+def refresh_hubspot_token(db: Session, token_record: HubSpotToken) -> HubSpotToken:
+    """
+    Use the stored refresh token to get a new access token from HubSpot.
+    Updates the DB record and returns the refreshed instance.
+    """
+    if not token_record.refresh_token:
+        raise HTTPException(status_code=401, detail="No refresh token available")
+
+    token_url = "https://api.hubapi.com/oauth/v1/token"
+    data = {
+        "grant_type": "refresh_token",
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "refresh_token": token_record.refresh_token,
+    }
+    res = requests.post(token_url, data=data)
+    if res.status_code != 200:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "message": "Failed to refresh HubSpot token",
+                "hubspot": res.json(),
+            },
+        )
+
+    payload = res.json()
+    token_record.access_token = payload["access_token"]
+    # HubSpot may return a new refresh_token as well
+    if "refresh_token" in payload:
+        token_record.refresh_token = payload["refresh_token"]
+    db.add(token_record)
+    db.commit()
+    db.refresh(token_record)
+    return token_record
+
 
 # --- PHASE 1: OAUTH ---
 @app.get("/install")
@@ -172,10 +209,18 @@ def update_investigation_status(
         raise HTTPException(status_code=400, detail="Unsupported status value")
 
     url = f"https://api.hubapi.com/crm/v3/objects/tickets/{ticket_id}"
-    headers = {"Authorization": f"Bearer {token.access_token}"}
-    data = {"properties": {"hs_pipeline_stage": stage}}
 
-    hs_res = requests.patch(url, headers=headers, json=data)
+    def _patch_with_token(current_token: HubSpotToken):
+        headers = {"Authorization": f"Bearer {current_token.access_token}"}
+        data = {"properties": {"hs_pipeline_stage": stage}}
+        return requests.patch(url, headers=headers, json=data)
+
+    hs_res = _patch_with_token(token)
+
+    # If the access token is expired, refresh once and retry
+    if hs_res.status_code == 401:
+        token = refresh_hubspot_token(db, token)
+        hs_res = _patch_with_token(token)
 
     if hs_res.status_code == 200:
         inv = db.query(Investigation).filter(Investigation.ticket_id == ticket_id).first()
@@ -207,8 +252,6 @@ def sync_tickets(db: Session = Depends(get_db)):
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated with HubSpot")
 
-    headers = {"Authorization": f"Bearer {token.access_token}"}
-
     url = "https://api.hubapi.com/crm/v3/objects/tickets"
     params = {
         "limit": 50,
@@ -219,7 +262,15 @@ def sync_tickets(db: Session = Depends(get_db)):
     created = 0
     updated = 0
 
-    res = requests.get(url, headers=headers, params=params)
+    def _get_with_token(current_token: HubSpotToken):
+        headers = {"Authorization": f"Bearer {current_token.access_token}"}
+        return requests.get(url, headers=headers, params=params)
+
+    res = _get_with_token(token)
+    if res.status_code == 401:
+        token = refresh_hubspot_token(db, token)
+        res = _get_with_token(token)
+
     if res.status_code != 200:
         raise HTTPException(
             status_code=502,
@@ -250,7 +301,7 @@ def sync_tickets(db: Session = Depends(get_db)):
             if company_id:
                 comp_res = requests.get(
                     f"https://api.hubapi.com/crm/v3/objects/companies/{company_id}",
-                    headers=headers,
+                    headers={"Authorization": f"Bearer {token.access_token}"},
                     params={"properties": "name"},
                 )
                 if comp_res.status_code == 200:
