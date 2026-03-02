@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
-import ResolveButton from './components/ResolveButton';
-
-const prisma = new PrismaClient();
-export const revalidate = 0; 
+import prisma from '@/lib/prisma';
+import ResolveButton from '@/components/ResolveButton';
+export const revalidate = 0;
 
 export default async function Dashboard() {
   const tickets = await prisma.equipmentTicket.findMany({
@@ -13,7 +11,7 @@ export default async function Dashboard() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-[#1e293b] font-sans antialiased">
       <main className="max-w-6xl mx-auto px-8 py-16">
-        
+
         {/* Header Section */}
         <header className="mb-12 flex justify-between items-end">
           <div className="space-y-1">
