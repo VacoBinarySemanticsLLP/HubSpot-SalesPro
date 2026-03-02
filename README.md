@@ -1,29 +1,27 @@
-# 🏸 Badminton Tracker - Repair Operations
+# Hubspot Tracker - Repair Operations
 
 A real-time equipment escalation queue designed to manage and resolve repair tasks synced directly from HubSpot.
 
-![Dashboard Preview](https://img.shields.io/badge/Status-Active-emerald)
-![Tech Stack](https://img.shields.io/badge/Tech-Next.js%20|%20Prisma%20|%20Tailwind%20-blue)
 
-## 🎯 Overview
+##  Overview
 
 This application serves as an internal dashboard for repair operations. It fetches equipment issues logged in HubSpot and presents them in a clean, actionable queue. When a task is "Resolved" in this dashboard, it automatically updates the corresponding ticket status in HubSpot and marks it as resolved in the local database.
 
-## 🚀 Key Features
+##  Key Features
 
 - **HubSpot Integration**: Real-time sync with HubSpot CRM tickets.
 - **Actionable Queue**: Simplified view of active repair tasks.
 - **Automated Workflows**: Resolving a task here triggers a ticket stage update in HubSpot.
 - **Modern UI**: Built with a clean, responsive design using Tailwind CSS 4.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
 - **Database**: [Prisma](https://www.prisma.io/) with SQLite
 - **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
 - **API**: HubSpot CRM API
 
-## 🏁 Getting Started
+##  Getting Started
 
 ### Prerequisites
 
@@ -61,7 +59,7 @@ This application serves as an internal dashboard for repair operations. It fetch
    ```
    Open [http://localhost:3000](http://localhost:3000) to view the result.
 
-## 📁 Project Structure
+##  Project Structure
 
 ```text
 badminton-tracker/
@@ -75,7 +73,7 @@ badminton-tracker/
 └── README.md          # Project documentation
 ```
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the project.
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`).
