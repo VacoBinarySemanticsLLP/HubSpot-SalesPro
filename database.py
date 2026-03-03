@@ -31,6 +31,8 @@ class TicketRecord(Base):
     contact_name = Column(String)
     contact_phone = Column(String)
     
+    sla_deadline = Column(String)
+    
     raw_payload = Column(JSON) 
 
 Base.metadata.create_all(bind=engine)

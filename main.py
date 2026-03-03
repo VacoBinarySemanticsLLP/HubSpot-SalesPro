@@ -1,9 +1,20 @@
 from fastapi import FastAPI, Request, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from database import SessionLocal, TicketRecord
 import hubspot_client
+from datetime import datetime, timedelta
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 def get_db():
     db = SessionLocal()
@@ -47,12 +58,22 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
     company_data = hubspot_client.get_company_details(company_id)
     contact_data = hubspot_client.get_contact_details(contact_id)
 
-    # 4. Prepare data and Upsert
+    # 4. Calculate SLA Deadline
+    investigation_reason = props.get("investigation_reason")
+    now = datetime.now()
+    if investigation_reason == "Documentation support":
+        sla_hours = 72
+    else:
+        sla_hours = 48
+    
+    sla_deadline = (now + timedelta(hours=sla_hours)).strftime('%Y-%m-%d %H:%M:%S')
+
+    # 5. Prepare data and Upsert
     update_data = {
         "subject": props.get("subject"),
         "merchant_id": props.get("merchant_id"),
         "restaurant_tier": props.get("restaurant_tier"),
-        "investigation_reason": props.get("investigation_reason"),
+        "investigation_reason": investigation_reason,
         "sales_investigation_required": is_required,
         "owner_name": f"{owner_data.get('firstName', '')} {owner_data.get('lastName', '')}".strip(),
         "owner_email": owner_data.get('email'),
@@ -60,6 +81,7 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
         "company_city": company_data.get('city'),
         "contact_name": f"{contact_data.get('firstname', '')} {contact_data.get('lastname', '')}".strip(),
         "contact_phone": contact_data.get('phone'),
+        "sla_deadline": sla_deadline,
         "raw_payload": data
     }
 
@@ -76,3 +98,21 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
 
     db.commit()
     return {"status": "success"}
+
+@app.get("/tickets")
+async def get_tickets(search: str = None, db: Session = Depends(get_db)):
+    query = db.query(TicketRecord)
+    
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(
+            or_(
+                TicketRecord.merchant_id.ilike(search_filter),
+                TicketRecord.company_name.ilike(search_filter),
+                TicketRecord.owner_name.ilike(search_filter),
+                TicketRecord.investigation_reason.ilike(search_filter)
+            )
+        )
+    
+    tickets = query.order_by(TicketRecord.id.desc()).all()
+    return tickets
