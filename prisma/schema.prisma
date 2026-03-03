@@ -7,12 +7,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Update your model status field if it isn't already
 model EquipmentTicket {
-  id               Int      @id @default(autoincrement())
-  hubspotTicketId  String   @unique
-  equipmentIssue   String
-  status           String   @default("Open") // Ensure this exists
-  occurredAt       DateTime
-  createdAt        DateTime @default(now())
+  id                   Int      @id @default(autoincrement())
+  hubspotTicketId      String   @unique
+  ticketName           String?  
+  customerName         String?  
+  companyName          String?  
+  ownerName            String?  
+  priority             String?  
+  pipelineStage        String?  
+  equipmentIssue       String
+  stringTension        String?  // <-- NEW
+  targetCompletionDate String?  // <-- NEW
+  requiredParts        String?  // <-- NEW
+  warrantyStatus       String?  // <-- NEW
+  status               String   @default("Open")
+  occurredAt           DateTime
+  createdAt            DateTime @default(now())
 }

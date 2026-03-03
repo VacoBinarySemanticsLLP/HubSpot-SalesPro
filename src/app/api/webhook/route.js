@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import prisma from '../../../lib/prisma'; // Using your new optimized singleton!
+import prisma from '../../../lib/prisma';
+import { getTicketDetails } from '../../../services/hubspot'; // Service imported
 
 export async function POST(request) {
   try {
@@ -40,24 +41,50 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing data" }, { status: 400 });
     }
 
-    // 6. Save or update the data in our SQLite database
+    const ticketIdStr = event.objectId.toString();
+
+    // 👉 6. DATA ENRICHMENT: Fetch the "Full Picture" from HubSpot before saving
+    const enrichedData = await getTicketDetails(ticketIdStr);
+
+    // 7. Save or update the enriched data in our SQLite database
     const newTicket = await prisma.equipmentTicket.upsert({
       where: {
-        hubspotTicketId: event.objectId.toString(),
+        hubspotTicketId: ticketIdStr,
       },
       update: {
         equipmentIssue: event.propertyValue,
         occurredAt: new Date(event.occurredAt),
-        status: 'Open', // Wakes the ticket back up if it was previously resolved
+        status: 'Open', 
+        ticketName: enrichedData.ticketName,
+        customerName: enrichedData.customerName,
+        companyName: enrichedData.companyName,
+        ownerName: enrichedData.ownerName,
+        priority: enrichedData.priority,
+        pipelineStage: enrichedData.pipelineStage,
+        stringTension: enrichedData.stringTension,              // <-- NEW
+        targetCompletionDate: enrichedData.targetCompletionDate, // <-- NEW
+        requiredParts: enrichedData.requiredParts,              // <-- NEW
+        warrantyStatus: enrichedData.warrantyStatus             // <-- NEW
       },
       create: {
-        hubspotTicketId: event.objectId.toString(),
+        hubspotTicketId: ticketIdStr,
         equipmentIssue: event.propertyValue,
         occurredAt: new Date(event.occurredAt),
+        status: 'Open',
+        ticketName: enrichedData.ticketName,
+        customerName: enrichedData.customerName,
+        companyName: enrichedData.companyName,
+        ownerName: enrichedData.ownerName,
+        priority: enrichedData.priority,
+        pipelineStage: enrichedData.pipelineStage,
+        stringTension: enrichedData.stringTension,              // <-- NEW
+        targetCompletionDate: enrichedData.targetCompletionDate, // <-- NEW
+        requiredParts: enrichedData.requiredParts,              // <-- NEW
+        warrantyStatus: enrichedData.warrantyStatus             // <-- NEW
       },
     });
 
-    console.log("✅ Securely verified & saved ticket:", newTicket.hubspotTicketId);
+    console.log("✅ Securely verified, enriched & saved ticket:", newTicket.hubspotTicketId);
     return NextResponse.json({ success: true, ticket: newTicket }, { status: 200 });
 
   } catch (error) {
