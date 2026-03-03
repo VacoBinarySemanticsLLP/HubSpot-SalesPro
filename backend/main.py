@@ -12,12 +12,14 @@ from dotenv import load_dotenv
 load_dotenv()
 app = FastAPI()
 
-# Add your Static IP here
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://34.72.137.250:3000", # Accessing via IP
-]
+# --- CONFIG ---
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+
+_frontend_origins = os.getenv("FRONTEND_ORIGINS", "")
+origins = [o.strip() for o in _frontend_origins.split(",") if o.strip()]
+if not origins:
+    origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,11 +28,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# --- CONFIG ---
-CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-REDIRECT_URI = os.getenv("REDIRECT_URI")
 # Expanded scopes to allow reading Company data and writing back to Tickets
 SCOPES = "crm.objects.contacts.read crm.objects.contacts.write crm.objects.companies.read crm.objects.companies.write tickets"
 
@@ -53,6 +50,35 @@ def get_db():
     db = SessionLocal()
     try: yield db
     finally: db.close()
+
+
+def exchange_code_for_token(code: str) -> dict:
+    redirect_uri = os.getenv("REDIRECT_URI")
+    if not redirect_uri:
+        raise HTTPException(
+            status_code=500,
+            detail="REDIRECT_URI environment variable is not configured",
+        )
+
+    token_url = "https://api.hubapi.com/oauth/v1/token"
+    data = {
+        "grant_type": "authorization_code",
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "redirect_uri": redirect_uri,
+        "code": code,
+    }
+    response = requests.post(token_url, data=data)
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": "Token exchange failed",
+                "hubspot": response.json(),
+            },
+        )
+
+    return response.json()
 
 def refresh_hubspot_token(db: Session, token_record: HubSpotToken) -> HubSpotToken:
     """
@@ -93,29 +119,24 @@ def refresh_hubspot_token(db: Session, token_record: HubSpotToken) -> HubSpotTok
 # --- PHASE 1: OAUTH ---
 @app.get("/install")
 def install():
+    redirect_uri = os.getenv("REDIRECT_URI")
+    if not redirect_uri:
+        raise HTTPException(
+            status_code=500,
+            detail="REDIRECT_URI environment variable is not configured",
+        )
+
     auth_url = (
         f"https://app.hubspot.com/oauth/authorize?"
         f"client_id={CLIENT_ID}&"
-        f"redirect_uri={REDIRECT_URI}&"
+        f"redirect_uri={redirect_uri}&"
         f"scope={SCOPES}"
     )
     return RedirectResponse(url=auth_url)
 
 @app.get("/oauth-callback")
 def oauth_callback(code: str, db: Session = Depends(get_db)):
-    token_url = "https://api.hubapi.com/oauth/v1/token"
-    data = {
-        "grant_type": "authorization_code",
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-        "redirect_uri": REDIRECT_URI,
-        "code": code
-    }
-    response = requests.post(token_url, data=data)
-    if response.status_code != 200:
-        return {"error": "Token exchange failed", "details": response.json()}
-    
-    tokens = response.json()
+    tokens = exchange_code_for_token(code)
     db.query(HubSpotToken).delete()
     new_token = HubSpotToken(access_token=tokens['access_token'], refresh_token=tokens['refresh_token'])
     db.add(new_token)
