@@ -12,9 +12,16 @@ from dotenv import load_dotenv
 load_dotenv()
 app = FastAPI()
 
+# Add your Static IP here
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://34.72.137.250:3000", # Accessing via IP
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "http://34.72.137.250:3000";
 const STATUS_OPTIONS = ["Open", "In Progress", "Resolved"];
 
 function StatusBadge({ status }) {
@@ -49,7 +49,7 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${API_BASE}/investigations`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/investigations`);
       if (!res.ok) throw new Error(`Backend returned ${res.status}`);
       const data = await res.json();
       setItems(data);
@@ -96,7 +96,7 @@ export default function DashboardPage() {
     };
 
     try {
-      const res = await fetch(`${API_BASE}/investigations/${ticketId}/status`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/investigations/${ticketId}/status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

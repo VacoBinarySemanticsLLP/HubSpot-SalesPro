@@ -7,8 +7,12 @@ services:
       dockerfile: backend/Dockerfile
     env_file:
       - ./backend/.env
+    environment:
+      - FRONTEND_URL=http://${GCP_STATIC_IP}:3000
     ports:
       - "8000:8000"
+    volumes:
+      - ./investigations.db:/app/investigations.db
     restart: unless-stopped
 
   frontend:
@@ -16,12 +20,9 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
     environment:
-      # Frontend talks to backend on the host at port 8000
-      # If you later read this from env in the frontend, wire it here.
-      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+      - NEXT_PUBLIC_BACKEND_URL=http://${GCP_STATIC_IP}:8000
     ports:
       - "3000:3000"
     depends_on:
       - backend
     restart: unless-stopped
-
