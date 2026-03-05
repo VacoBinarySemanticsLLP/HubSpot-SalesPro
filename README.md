@@ -1,4 +1,4 @@
-# HubSpot SalesPro - Repair Operations Dashboard
+# SmashOps.pro - Badminton Repair Dashboard
 
 A real-time equipment escalation queue that syncs with HubSpot to manage and resolve repair tasks.
 

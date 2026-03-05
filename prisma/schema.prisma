@@ -22,6 +22,8 @@ model EquipmentTicket {
   requiredParts        String?  // <-- NEW
   warrantyStatus       String?  // <-- NEW
   status               String   @default("Open")
+  hubspotSyncStatus    String   @default("SYNCED") // SYNCED, FAILED, PENDING
+  lastSyncError        String?
   occurredAt           DateTime
   createdAt            DateTime @default(now())
 }

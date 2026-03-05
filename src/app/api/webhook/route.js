@@ -52,9 +52,11 @@ export async function POST(request) {
         hubspotTicketId: ticketIdStr,
       },
       update: {
-        equipmentIssue: event.propertyValue,
+        equipmentIssue: enrichedData.equipmentIssue,
         occurredAt: new Date(event.occurredAt),
-        status: 'Open', 
+        // status: 'Open', 
+        // Automatically move to 'Resolved' if HubSpot says it's closed, otherwise keep it 'Open'
+        status: enrichedData.pipelineStage === (process.env.HUBSPOT_CLOSED_STAGE_ID || '4') ? 'Resolved' : 'Open',
         ticketName: enrichedData.ticketName,
         customerName: enrichedData.customerName,
         companyName: enrichedData.companyName,
@@ -68,7 +70,7 @@ export async function POST(request) {
       },
       create: {
         hubspotTicketId: ticketIdStr,
-        equipmentIssue: event.propertyValue,
+        equipmentIssue: enrichedData.equipmentIssue,
         occurredAt: new Date(event.occurredAt),
         status: 'Open',
         ticketName: enrichedData.ticketName,
