@@ -36,13 +36,22 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
     ticket_data = hubspot_client.get_ticket_details(ticket_id)
     props = ticket_data.get("properties", {})
     
-    # 2. Logic Filter: Trigger only if investigation is Required
+
+   # 2. Logic Filter: Trigger only if investigation is Required
     is_required = props.get("sales_investigation_required")
     if is_required != "Yes":
-        print(f"Skipping Ticket {ticket_id}: Investigation Required is '{is_required}'")
+        existing_record = db.query(TicketRecord).filter(TicketRecord.ticket_id == ticket_id).first()
+        if existing_record:
+            db.delete(existing_record)
+            db.commit()
+            print(f"Ticket {ticket_id} changed to '{is_required}'. Removed from local DB.")
+        else:
+            print(f"Skipping Ticket {ticket_id}: Investigation Required is '{is_required}'")
+        
         return {"status": "ignored"}
 
     print(f"Processing Investigation for Merchant ID: {props.get('merchant_id')}")
+
 
     # 3. Extract IDs and fetch enrichment data
     associations = ticket_data.get("associations", {})
@@ -58,6 +67,7 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
     company_data = hubspot_client.get_company_details(company_id)
     contact_data = hubspot_client.get_contact_details(contact_id)
 
+
     # 4. Calculate SLA Deadline
     investigation_reason = props.get("investigation_reason")
     now = datetime.now()
@@ -67,6 +77,7 @@ async def handle_webhook(request: Request, db: Session = Depends(get_db)):
         sla_hours = 48
     
     sla_deadline = (now + timedelta(hours=sla_hours)).strftime('%Y-%m-%d %H:%M:%S')
+
 
     # 5. Prepare data and Upsert
     update_data = {
