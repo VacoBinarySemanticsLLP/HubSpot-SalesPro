@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - sqldata:/app/data
+    environment:
+      # Use the mounted volume directory for persistent sqlite data
+      - DATABASE_URL=sqlite:////app/data/hubspot_learning.db
+    env_file:
+      - .env
+
+  frontend:
+    build: frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NEXT_PUBLIC_BACKEND_URL=http://34.173.108.205:8000
+    depends_on:       
+      - backend
+
+volumes:
+  sqldata:

@@ -27,7 +27,7 @@ export default function Dashboard() {
 
   const fetchTickets = () => {
     setLoading(true);
-    fetch("http://localhost:8000/tickets")
+    fetch("http://34.173.108.205:8000/tickets")
       .then((res) => res.json())
       .then((data) => {
         setTickets(data);
