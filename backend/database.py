@@ -14,6 +14,7 @@ class Investigation(Base):
     ticket_id = Column(String, unique=True)
     merchant_name = Column(String)  # <-- ADD THIS LINE
     reason = Column(String)
+    investigation_reason = Column(String, nullable=True)
     status = Column(String, default="Open")
     comments = Column(String, nullable=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow)

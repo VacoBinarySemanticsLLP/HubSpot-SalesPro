@@ -159,19 +159,25 @@ async def hubspot_webhook(request: Request, db: Session = Depends(get_db)):
 
     for event in payload:
         ticket_id = event.get('objectId')
-        if event.get('propertyName') == "sales_investigation_required" and event.get('propertyValue') == "Yes":
+        prop_name = event.get('propertyName')
+        
+        valid_props = ["sales_investigation_required", "investigation_reason"]
+        if prop_name in valid_props:
             
             # 1. Fetch Ticket Subject & Associated Companies
             headers = {"Authorization": f"Bearer {token_record.access_token}"}
             hs_url = f"https://api.hubapi.com/crm/v3/objects/tickets/{ticket_id}"
-            hs_res = requests.get(hs_url, headers=headers, params={"properties": "subject", "associations": "companies"})
+            hs_res = requests.get(hs_url, headers=headers, params={"properties": "subject,sales_investigation_required,investigation_reason", "associations": "companies"})
             
             subject = "New Investigation"
             merchant = "Unknown Merchant"
+            inv_reason = None
 
             if hs_res.status_code == 200:
                 data = hs_res.json()
-                subject = data['properties'].get('subject', "No Subject")
+                props = data.get('properties', {})
+                subject = props.get('subject', "No Subject")
+                inv_reason = props.get('investigation_reason')
                 
                 # 2. Extract Merchant (Company) Name
                 associations = data.get('associations', {}).get('companies', {}).get('results', [])
@@ -184,11 +190,17 @@ async def hubspot_webhook(request: Request, db: Session = Depends(get_db)):
 
             # 3. Save to Local DB
             existing = db.query(Investigation).filter(Investigation.ticket_id == str(ticket_id)).first()
-            if not existing:
+            if existing:
+                existing.merchant_name = merchant
+                existing.reason = subject
+                existing.investigation_reason = inv_reason
+                print(f"UPDATED: {merchant} | {subject}")
+            else:
                 new_inv = Investigation(
                     ticket_id=str(ticket_id),
-                    merchant_name=merchant, # Make sure your DB model has this field!
+                    merchant_name=merchant,
                     reason=subject,
+                    investigation_reason=inv_reason,
                     status="Open"
                 )
                 db.add(new_inv)
@@ -283,7 +295,7 @@ def sync_tickets(db: Session = Depends(get_db)):
     url = "https://api.hubapi.com/crm/v3/objects/tickets"
     params = {
         "limit": 50,
-        "properties": "subject,hs_pipeline_stage,sales_investigation_required",
+        "properties": "subject,hs_pipeline_stage,sales_investigation_required,investigation_reason",
         "associations": "companies",
     }
 
@@ -315,6 +327,7 @@ def sync_tickets(db: Session = Depends(get_db)):
             continue
 
         subject = props.get("subject") or "No Subject"
+        inv_reason = props.get("investigation_reason")
         stage_id = props.get("hs_pipeline_stage")
         status = STAGE_TO_STATUS.get(stage_id, "Open")
 
@@ -348,6 +361,7 @@ def sync_tickets(db: Session = Depends(get_db)):
         if existing:
             existing.merchant_name = merchant_name
             existing.reason = subject
+            existing.investigation_reason = inv_reason
             existing.status = status
             updated += 1
         else:
@@ -355,6 +369,7 @@ def sync_tickets(db: Session = Depends(get_db)):
                 ticket_id=str(ticket_id),
                 merchant_name=merchant_name,
                 reason=subject,
+                investigation_reason=inv_reason,
                 status=status,
             )
             db.add(new_inv)

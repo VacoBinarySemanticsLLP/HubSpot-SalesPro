@@ -4,8 +4,13 @@ Small proof-of-concept that:
 
 - Connects a **public HubSpot app** via OAuth.
 - Receives tickets that require a sales investigation.
-- Stores them in a local **SQLite** database.
-- Exposes a **Next.js** dashboard to review and update status, which is synced back to HubSpot.
+- Stores them in a local **SQLite** database with persistent Docker volumes.
+- Exposes a **Next.js** dashboard featuring:
+  - **Live Search**: Quick lookup by Ticket ID or Merchant Name.
+  - **Pagination**: Efficiently browse large sets of investigations.
+  - **One-click Sync**: A "Sync Tickets" button that pulls the latest metadata directly from HubSpot into your local queue.
+  - **Status Coloring**: Visual status badges (Green for Resolved, Amber for In Progress, Blue for Open).
+  - **Status Syncing**: Update status and internal comments which sync back to HubSpot pipelines.
 
 ---
 
@@ -21,8 +26,10 @@ Small proof-of-concept that:
 - **Frontend**: Next.js (`frontend/`)
   - One page at `/` that:
     - Calls `GET /investigations`.
+    - **Search**: Filters the local list by name or ID.
+    - **Refresh**: Triggers `POST /sync-tickets` to pull new HubSpot data into SQLite.
     - Lets you change **status** and **comments** per ticket.
-    - Calls `POST /investigations/{ticket_id}/status` to sync back to HubSpot.
+    - Calls `POST /investigations/{ticket_id}/status` to sync changes back to HubSpot.
 
 ---
 
@@ -174,10 +181,15 @@ You must complete this once per portal to allow the backend to call the HubSpot 
 
 ## 5. Populate the local `investigations` table
 
-There are two ways to get tickets into the local DB.
+There are three ways to get tickets into the local DB.
 
-### Option A: One-shot sync from HubSpot
+### Option A: Sync Button in UI (Recommended)
+Click the **↻ Sync Tickets** button at the top of the dashboard. This calls the `/sync-tickets` endpoint and refreshes the data automatically.
 
+### Option B: Automatic Webhooks
+Point a HubSpot webhook subscription at your public URL (e.g., via ngrok). When `sales_investigation_required` becomes `"Yes"`, HubSpot will push the ticket details directly to your VM.
+
+### Option C: Manual CLI Sync
 From a separate terminal (with the backend still running):
 
 ```bash
@@ -288,7 +300,12 @@ The backend:
 2. Calls the HubSpot Tickets API to update the ticket.
 3. Updates the local `investigations` row (`status`, `comments`).
 
-Refresh the page or click the **Refresh** button in the UI to confirm changes.
+The UI uses **Pagination** (defaults to 5 items) and **Search** to help manage your queue. 
+
+### Data Persistence
+The `docker-compose.yml` is configured to mount `./investigations.db` as a volume. This ensures that your HubSpot OAuth tokens and local investigation data **survive container restarts** and image updates. 
+
+Refresh the page or click the **Sync Tickets** button in the UI to confirm changes.
 
 ---
 
