@@ -28,7 +28,7 @@ export default function RootLayout({ children }) {
             <h1 style={{ margin: 0, fontSize: "1.25rem" }}>
               Sales Investigation Console
             </h1>
-            <p
+            {/* <p
               style={{
                 margin: "0.25rem 0 0",
                 fontSize: "0.8rem",
@@ -36,7 +36,7 @@ export default function RootLayout({ children }) {
               }}
             >
               Backend: FastAPI + HubSpot · Frontend: Next.js
-            </p>
+            </p> */}
           </header>
           <main
             style={{ padding: "1.5rem", maxWidth: "1120px", margin: "0 auto" }}

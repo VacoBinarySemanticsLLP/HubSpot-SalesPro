@@ -18,6 +18,7 @@ class Investigation(Base):
     status = Column(String, default="Open")
     comments = Column(String, nullable=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
 
 class HubSpotToken(Base):
     __tablename__ = "tokens"

@@ -16,13 +16,9 @@ services:
     restart: unless-stopped
 
   frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: http://${GCP_STATIC_IP}:8000
+    image: us-central1-docker.pkg.dev/github-cicd-pipeline/hubspot-repo/frontend:latest
     environment:
-      - NEXT_PUBLIC_API_URL=http://${GCP_STATIC_IP}:8000
+      - NEXT_PUBLIC_API_URL=http://34.72.137.250:8000
     ports:
       - "3000:3000"
     depends_on:
