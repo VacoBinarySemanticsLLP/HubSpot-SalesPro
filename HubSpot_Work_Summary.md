@@ -1,57 +1,83 @@
-# HubSpot Investigation POC - Work Summary
+# HubSpot Investigation & Repair Dashboard (SmashOps.pro)
 
-## Overview
+## 📋 Project Overview
 
-The **HubSpot Investigation POC** is a specialized Proof-of-Concept designed to streamline the sales investigation workflow by integrating HubSpot CRM with a localized, efficient dashboard. It automates the process of identifying, tracking, and updating tickets that require deep-dive investigations.
+The **HubSpot Investigation & Repair Dashboard** (codenamed **SmashOps.pro**) is an enterprise-grade Proof-of-Concept designed to bridge the gap between HubSpot CRM and specialized field operations. It provides a secure, real-time environment for technicians and sales investigators to manage equipment escalations and ticket resolutions with bi-directional synchronization.
 
----
-
-## Technical Architecture
-
-The project follows a modern decoupled architecture, ensuring scalability and ease of deployment:
-
-### 1. Backend (FastAPI)
-- **Framework**: FastAPI (Python) for high-performance asynchronous API endpoints.
-- **Authentication**: Full OAuth 2.0 implementation for secure HubSpot application connection.
-- **Database**: SQLite for local persistence of investigation data and OAuth tokens.
-- **Key Modules**:
-  - `main.py`: Core application logic, OAuth routes, and synchronization logic.
-  - `database.py`: SQLAlchemy ORM models for Tickets and Tokens.
-
-### 2. Frontend (Next.js)
-- **Framework**: Next.js (React) providing a responsive and dynamic user experience.
-- **Key Features**:
-  - Real-time investigation queue display.
-  - Advanced search and pagination.
-  - Interactive status management and comment syncing.
-
-### 3. Deployment & Infrastructure
-- **Containerization**: Fully Dockerized using `docker-compose` for local and cloud environments.
-- **Cloud Hosting**: Optimized for deployment on **Google Cloud Platform (GCP)** via Compute Engine VMs.
+This system is optimized for speed, reliability, and data enrichment, transforming raw CRM data into an actionable, filterable queue.
 
 ---
 
-## Core Features & Functionality
+## 🏗️ Technical Architecture & Stack
 
-### 🔄 Multi-Channel Ticket Sync
-The system supports three primary methods for populating the investigation queue:
-1. **On-Demand Sync**: A manual "Sync Tickets" button in the UI for immediate updates.
-2. **Automated Webhooks**: Real-time ticket ingestion via HubSpot Webhook subscriptions.
-3. **CLI Sync**: Dedicated POST endpoints for programmatic or scheduled synchronization.
+The architecture is built on a high-performance, decoupled stack designed for resilience and rapid feedback.
 
-### 📊 Comprehensive Dashboard
-- **Live Search**: Instant lookup by Ticket ID or Merchant Name.
-- **Visual Status Tracking**: Color-coded badges for quick identification of investigation states (Open, In Progress, Resolved).
-- **Metadata Visibility**: Rich ticket details including merchant info, reason, and timestamps.
+| Layer | Technology | Description |
+| :--- | :--- | :--- |
+| **Frontend** | [Next.js 16.1](https://nextjs.org/) | App Router architecture with [Tailwind CSS 4](https://tailwindcss.com/) and [React Hot Toast](https://react-hot-toast.com/). |
+| **Backend** | [FastAPI](https://fastapi.tiangolo.com/) / [Next.js Server Actions](https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations) | Hybrid approach using Python for heavy logic/OAuth and JS for optimistic UI updates. |
+| **Database** | [SQLite](https://www.sqlite.org/) via [Prisma](https://www.prisma.io/) / [SQLAlchemy](https://www.sqlalchemy.org/) | Local storage with persistent Docker volumes for speed and offline-first reliability. |
+| **Auth** | [NextAuth.js v4](https://next-auth.js.org/) | Secure credentials-based access for technicians and sales teams. |
+| **CRM API** | [HubSpot CRM API v3](https://developers.hubspot.com/) | Robust integration using OAuth 2.0 and Private App tokens. |
 
-### 🤝 Bidirectional Communication
-- **Status Syncing**: Changing a status in the dashboard automatically maps to the correct HubSpot pipeline stage.
-- **Comment Persistence**: Internal investigation comments are synced back to HubSpot, ensuring the system of record is always up to date.
+### System Architecture Diagram (Conceptual)
+![Frontend Dashboard UI](UI.png)
+*Figure 1: The Sales Investigation Dashboard featuring live search and status badges.*
 
 ---
 
-## Business Value
+## 🚀 Key Features
 
-- **Efficiency**: Reduces time spent manually searching for tickets in the HubSpot UI.
-- **Centralization**: Provides a single pane of glass for all sales-related investigation work.
-- **Reliability**: local SQLite storage with Docker volume persistence ensures data safety even across system restarts.
+### 1. Resilient Sync Engine
+Utilizes a custom State Machine to manage data consistency between the local DB and HubSpot.
+- **States**: `PENDING`, `SYNCED`, `FAILED`.
+- **Logic**: Handles network failures gracefully, ensuring no status update or comment is lost.
+
+### 2. Smart Ticket Filtering & Lifecycle
+- **Trigger**: The system only tracks tickets where `sales_investigation_required` is set to **"Yes"**.
+- **Auto-Cleanup**: Records are automatically purged from the local dashboard if an investigation is flagged as no longer required in HubSpot.
+
+### 3. Automated Data Enrichment
+Each ticket pulled into the system is automatically enriched with:
+- **Owner Details**: Full name and email of the ticket owner.
+- **Company Metadata**: Name and city of the associated organization.
+- **Contact Details**: Direct contact name and phone number.
+
+### 4. SLA & Deadline Management
+The system automatically calculates Service Level Agreement (SLA) deadlines based on the `investigation_reason`:
+- **Documentation Support**: 72-hour resolution window.
+- **Standard Cases**: 48-hour resolution window.
+
+### 5. Enterprise Security
+- **Webhook Verification**: Incoming HubSpot webhooks are cryptographically verified using **HMAC SHA-256 signatures**.
+- **Access Control**: Role-based access via NextAuth.js to ensure only authorized personnel can trigger CRM mutations.
+
+---
+
+## 📊 Component Specifications
+
+### Backend Endpoints
+- `/install` / `/oauth-callback`: Handles the Public App OAuth handshake.
+- `/sync-tickets`: Triggers a full reconciliation between HubSpot and SQLite.
+- `/investigations/{id}/status`: Updates local state and maps it back to HubSpot pipeline stages.
+
+### Frontend Interactions
+- **Optimistic UI**: built-in feedback loops that update the UI immediately while the server action processes in the background.
+- **Visual Status Badges**:
+  - 🔵 **Blue**: Open
+  - 🟠 **Amber**: In Progress
+  - 🟢 **Green**: Resolved
+
+---
+
+## 🔗 Reference Links
+- [HubSpot Developer Portal](https://developers.hubspot.com/)
+- [Prisma ORM Documentation](https://www.prisma.io/docs)
+- [Next.js App Router Guide](https://nextjs.org/docs/app)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+
+---
+
+### Raw Data Preview
+![Investigations JSON Payload](JsonResponse.png)
+*Figure 2: Example JSON structure used for dashboard hydration.*
