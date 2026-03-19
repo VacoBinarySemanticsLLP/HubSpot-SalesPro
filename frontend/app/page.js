@@ -107,7 +107,9 @@ export default function DashboardPage() {
 
   const filteredAndSearchedItems = useMemo(() => {
     let result = items;
-    if (filter !== "All") {
+    if (filter === "All") {
+      result = result.filter((i) => i.status !== "Resolved");
+    } else {
       result = result.filter((i) => i.status === filter);
     }
 
@@ -480,27 +482,29 @@ export default function DashboardPage() {
                     </td>
                     <td style={{ padding: "0.8rem 0.75rem", verticalAlign: "top" }}>
                       <StatusBadge status={inv.status} />
-                      <div style={{ marginTop: "0.4rem" }}>
-                        <select
-                          value={draft.status || inv.status || "Open"}
-                          onChange={(e) =>
-                            updateDraft(inv.ticket_id, { status: e.target.value })
-                          }
-                          style={{
-                            width: "100%",
-                            padding: "0.25rem 0.4rem",
-                            fontSize: "0.75rem",
-                            borderRadius: "0.4rem",
-                            border: "1px solid #cbd5e1",
-                          }}
-                        >
-                          {STATUS_OPTIONS.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      {inv.status !== "Resolved" && (
+                        <div style={{ marginTop: "0.4rem" }}>
+                          <select
+                            value={draft.status || inv.status || "Open"}
+                            onChange={(e) =>
+                              updateDraft(inv.ticket_id, { status: e.target.value })
+                            }
+                            style={{
+                              width: "100%",
+                              padding: "0.25rem 0.4rem",
+                              fontSize: "0.75rem",
+                              borderRadius: "0.4rem",
+                              border: "1px solid #cbd5e1",
+                            }}
+                          >
+                            {STATUS_OPTIONS.map((s) => (
+                              <option key={s} value={s}>
+                                {s}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: "0.8rem 0.75rem", verticalAlign: "top" }}>
                       <textarea

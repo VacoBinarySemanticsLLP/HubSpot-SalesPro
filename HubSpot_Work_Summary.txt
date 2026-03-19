@@ -1,0 +1,56 @@
+# HubSpot Investigation & Repair Dashboard (SmashOps.pro)
+
+OVERVIEW
+The HubSpot Investigation & Repair Dashboard (codenamed SmashOps.pro) is an enterprise-grade Proof-of-Concept designed to bridge the gap between HubSpot CRM and specialized field operations. It provides a secure, real-time environment for technicians and sales investigators to manage equipment escalations and ticket resolutions with bi-directional synchronization.
+
+This system is optimized for speed, reliability, and data enrichment, transforming raw CRM data into an actionable, filterable queue.
+
+TECHNICAL ARCHITECTURE & STACK
+The architecture is built on a high-performance, decoupled stack designed for resilience and rapid feedback.
+
+- Frontend: Next.js 16.1 (App Router architecture with Tailwind CSS 4 and React Hot Toast).
+- Backend: FastAPI / Next.js Server Actions (Hybrid approach using Python for heavy logic/OAuth and JS for optimistic UI updates).
+- Database: SQLite via Prisma / SQLAlchemy (Local storage with persistent Docker volumes).
+- Auth: NextAuth.js v4 (Secure credentials-based access).
+- CRM API: HubSpot CRM API v3 (OAuth 2.0 and Private App tokens).
+
+KEY FEATURES
+1. Resilient Sync Engine
+   Utilizes a custom State Machine to manage data consistency between the local DB and HubSpot.
+   - States: PENDING, SYNCED, FAILED.
+   - Logic: Handles network failures gracefully.
+
+2. Smart Ticket Filtering & Lifecycle
+   - Trigger: The system only tracks tickets where "sales_investigation_required" is set to "Yes".
+   - Auto-Cleanup: Records are automatically purged if no longer required.
+
+3. Automated Data Enrichment
+   Each ticket is enriched with:
+   - Owner Details (Full name and email).
+   - Company Metadata (Name and city).
+   - Contact Details (Direct contact name and phone number).
+
+4. SLA & Deadline Management
+   Calculates deadlines based on "investigation_reason":
+   - Documentation Support: 72-hour resolution window.
+   - Standard Cases: 48-hour resolution window.
+
+5. Enterprise Security
+   - Webhook Verification: HMAC SHA-256 signatures.
+   - Access Control: Role-based access via NextAuth.js.
+
+COMPONENT SPECIFICATIONS
+Backend Endpoints:
+- /install / /oauth-callback: OAuth handshake.
+- /sync-tickets: Full reconciliation.
+- /investigations/{id}/status: Status updates and HubSpot sync.
+
+Frontend Interactions:
+- Optimistic UI: Immediate feedback loops.
+- Visual Status Badges: Blue (Open), Amber (In Progress), Green (Resolved).
+
+REFERENCE LINKS
+- HubSpot Developer Portal: https://developers.hubspot.com/
+- Prisma ORM Documentation: https://www.prisma.io/docs
+- Next.js App Router Guide: https://nextjs.org/docs/app
+- FastAPI Documentation: https://fastapi.tiangolo.com/

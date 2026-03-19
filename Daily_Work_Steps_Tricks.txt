@@ -1,0 +1,70 @@
+ENGINEER'S HANDBOOK: SETUP, WORKFLOWS & TROUBLESHOOTING
+This document provides definitive technical instructions for running, debugging, and maintaining the HubSpot POC and SmashOps.pro platform.
+
+COMPLETE SETUP GUIDE
+
+1. HubSpot Property Configuration
+For the sync engine to function correctly, the following properties must exist in your HubSpot portal with the exact internal names specified:
+
+- Sales Investigation Required: sales_investigation_required (Checkbox Yes/No)
+- Equipment Issue: equipment_issue (Dropdown)
+- Warranty Status: warranty_status (Dropdown)
+- Required Parts: required_parts (Multiple Checkboxes)
+- SLA Deadline: sla_deadline (Date Picker)
+
+2. Environment Variables (.env)
+Create a .env file in the root directory:
+
+DATABASE_URL="file:./dev.db"
+CLIENT_ID=your_client_id
+CLIENT_SECRET=your_client_secret
+HUBSPOT_ACCESS_TOKEN=your_private_app_token
+REDIRECT_URI=http://localhost:8000/oauth-callback
+HUBSPOT_WEBHOOK_SECRET=your_webhook_secret
+NEXTAUTH_SECRET=random_string_32_chars
+NEXTAUTH_URL=http://localhost:3000
+TECH_PASS=your_secure_password
+
+3. Local Execution (Docker)
+The recommended way to run the stack is via Docker Compose:
+command: docker-compose up --build
+
+- Backend API: http://localhost:8000
+- Dashboard: http://localhost:3000
+
+DEVELOPMENT WORKFLOWS
+
+Database Migrations (Prisma stack):
+- npx prisma generate
+- npx prisma db push
+- npx prisma studio (DB Viewer)
+
+The "OAuth Tunnel" Trick:
+command: gcloud compute ssh static-host --zone us-central1-c -- -L 8000:localhost:8000
+Then visit http://localhost:8000/install in your local browser.
+
+TROUBLESHOOTING & "TRICKS"
+
+Common Issues:
+- "Table does not exist": Run npx prisma db push or check volume.
+- Webhook 403/401: Verify HUBSPOT_WEBHOOK_SECRET.
+- Port 3000 in use: Run "fuser -k 3000/tcp" to force kill.
+- SLA not calculating: Ensure "investigation_reason" property exists.
+
+Webhook Development with Ngrok:
+1. Start ngrok: ngrok http 3000
+2. Update HubSpot Target URL with the ngrok address.
+3. Subscribe to "equipment_issue" and "hs_pipeline_stage" events.
+
+Data Verification:
+- Manual Sync: curl -X POST http://localhost:8000/sync-tickets
+- Check Logs: docker-compose logs -f backend
+
+BEST PRACTICES
+- Persistent Volumes: Always mount ./investigations.db (or dev.db) to ensure tokens survive restarts.
+- Cryptographic Verification: Never disable webhook signature checking in production.
+- Graceful Shutdowns: Use docker-compose down instead of stopping the terminal.
+
+INTERNAL REFERENCES
+- HubSpot_Work_Summary.txt
+- README.md
